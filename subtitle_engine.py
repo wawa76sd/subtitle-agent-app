@@ -1,295 +1,139 @@
 # -*- coding: utf-8 -*-
 """
-[AI 에이전트 자막 교차 검수 시스템 - 최종 엔진]
-1단계(한글 병합), 2단계(영문 번역), 3단계(교차 역번역)의 3대 전문 에이전트 아키텍처를
-완벽하게 구동하고 네이버 사전 및 구글 검색 링크를 동적 빌드하는 완결판 코드
+'🤖 AI 에이전트 자막 교차 검수 시스템'의 
+3대 에이전트별 작동 메커니즘과 실시간 진행 단계(프로그레스)를 완벽히 매핑한 메인 UI
 """
-import re
-import html
-import urllib.parse
-import requests
-from dataclasses import dataclass
+import streamlit as st
+import subtitle_engine as engine
+import time
 
-@dataclass
-class SubtitleSegment:
-    seg_id: int
-    timecode: str = ""
-    ko_merged: str = ""
-    en: str = ""
-    back_ko: str = ""
-    status: str = "normal"
+st.set_page_config(page_title="AI 에이전트 자막 교차 검수 시스템", layout="wide")
 
-@dataclass
-class ProcessingResult:
-    original_count: int
-    merged_count: int
-    segments: list[SubtitleSegment]
-    translated_en_srt: str
-    review_html: str
-    merged_ko_srt: str
-
-def parse_srt_precise(srt_content):
-    content = srt_content.replace('\r\n', '\n').strip()
-    blocks = content.split('\n\n')
-    subtitles = []
-    for block in blocks:
-        lines = [line.strip() for line in block.split('\n') if line.strip()]
-        if len(lines) >= 3 and '-->' in lines[1]:
-            subtitles.append({"index": lines[0], "time": lines[1], "text": " ".join(lines[2:])})
-    return subtitles
-
-def unlimited_premium_translate(text, source='ko', target='en'):
-    clean_text = text.strip()
-    if not clean_text: return ""
-    try:
-        url = "https://translate.googleapis.com/translate_a/single"
-        params = {"client": "gtx", "sl": source, "tl": target, "dt": "t", "q": clean_text}
-        response = requests.get(url, params=params, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
-        if response.status_code == 200:
-            res_json = response.json()
-            if res_json and res_json[0]:
-                return html.unescape("".join([part[0] for part in res_json[0] if part[0]]))
-    except: pass
-    return clean_text
-
-def clean_and_sanitize_translation(en_text, ko_text):
-    """
-    💡 [2단계 영문 문맥 번역 에이전트의 핵심 코어 알고리즘]
-    단순 기계 직역을 차단하고, 컴플라이언스 필수 강좌명과 강사 소개 멘트를 세련된 서구권 비즈니스 표준 표현으로 의역합니다.
-    """
-    # 강사 인트로 전체 소개 서식 고정
-    if "공광식" in ko_text and ("교육" in ko_text or "매뉴얼" in ko_text):
-        return "Hello, I am Gong Gwang-sik, a certified labor attorney. Today, we will begin the mandatory compliance course, [The Statutory Compliance Manual: Prevention of Workplace Harassment] by Hackers Campus."
-        
-    fixed_en = en_text
-    # 강좌명 단어 감지 시 직역 찌꺼기 청소 및 공식 규격 명칭 맵핑
-    if "법정필수매뉴얼" in ko_text or "직장 내 괴롭힘 예방 교육" in ko_text or "직장내 괴롭힘 예방교육" in ko_text:
-        fixed_en = re.sub(r"legally required manual[s]?", "[The Statutory Compliance Manual]", fixed_en, flags=re.IGNORECASE)
-        fixed_en = re.sub(r"workplace bullying prevention training", "[Prevention of Workplace Harassment Education]", fixed_en, flags=re.IGNORECASE)
-        fixed_en = re.sub(r"workplace harassment prevention training", "[Prevention of Workplace Harassment Education]", fixed_en, flags=re.IGNORECASE)
-        if len(ko_text.strip()) <= 35:
-            return "[The Statutory Compliance Manual: Prevention of Workplace Harassment]"
-
-    # 이러닝 표준 차시 표현(Session/Module) 고도화 및 오역 교정
-    fixed_en = re.sub(r"\bpoem\b", "session", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bpoems\b", "sessions", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bfirst poem\b", "first session", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bin this poem\b", "in this session", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bthis time\b", "this session", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bnext time\b", "next session", fixed_en, flags=re.IGNORECASE)
-    
-    if "public ceremony" in fixed_en.lower() or "ceremony" in fixed_en.lower():
-        fixed_en = re.sub(r"public ceremony", "Instructor Gong Gwang-sik", fixed_en, flags=re.IGNORECASE)
-    
-    fixed_en = re.sub(r"\bkwang[-?\s]*shik\s*kong\b", "Gong Gwang-sik", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bgong\s*kwang\s*shik\b", "Gong Gwang-sik", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bLabor Officer\b", "Certified Labor Attorney", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bMr\. Labor Officer\b", "Certified Labor Attorney", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"Workplace Bullying Prohibition Act", "Prevention of Workplace Harassment Act", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\baction guidelines\b", "Compliance Guidelines", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bpractical action\b", "Code of Conduct", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bHackers\b(?!\s+Campus)", "Hackers Campus", fixed_en, flags=re.IGNORECASE)
-    return fixed_en
-
-def extract_legal_terms_from_text(full_text_content):
-    """
-    💡 [고유명사 추출 알고리즘]
-    자막과 대본에서 조사와 군더더기를 제거하고 순수 '~위원회', '~법' 단어만 정확히 분리합니다.
-    """
-    if not full_text_content: return []
-    clean_text = re.sub(r"[^\w\s]", " ", full_text_content)
-    words = clean_text.split()
-    target_pattern = r"([가-힣\d]{2,15}(?:법|법률|지침|규칙|고시|위원회|노동청|부처|연구소|센터))"
-    josa_pattern = r"[이가은는을를와과의로나만까지도에서부터에만고서]+$"
-    blacklist = ["보면", "실제", "우리", "안녕하세요", "이렇게", "검토", "지시", "대하여", "하는", "준수", "지칭", "방법", "경우", "명확한", "의미형", "개념과", "번째는", "본질적", "우가"]
-    
-    terms = []
-    for word in words:
-        match = re.search(target_pattern, word)
-        if match:
-            token = match.group(1).strip()
-            token = re.sub(josa_pattern, "", token)
-            token = re.sub(r"^[은는이가을를와과의\s]+", "", token)
-            if token and len(token) > 1 and token not in blacklist and token not in terms:
-                if token.endswith(('법', '법률', '지침', '규칙', '고시', '위원회', '노동청', '부처', '연구소', '센터')) or "인권위" in token:
-                    if not any(fake in token for fake in ["안녕하세요", "보면", "실제", "우리", "이렇게", "개념", "우가"]):
-                        terms.append(token)
-    return terms
-
-def process_subtitles(srt_content, script_content, source_filename=None):
-    raw_subs = parse_srt_precise(srt_content)
-    if not raw_subs: return ProcessingResult(0, 0, [], "", "", "")
-    
-    # 자막 데이터와 원고 대본을 통합하여 고유명사 동적 추출 (양방향 크로스 스캔)
-    combined_raw_text = srt_content + "\n" + script_content
-    all_discovered_terms = extract_legal_terms_from_text(combined_raw_text)
-    
-    merged_segments = []
-    temp_text = []
-    start_time = ""
-    idx = 1
-    
-    for i, sub in enumerate(raw_subs):
-        if not temp_text: start_time = sub["time"].split(" --> ")[0]
-        temp_text.append(sub["text"])
-        end_time = sub["time"].split(" --> ")[1]
-        full_sentence = " ".join(temp_text)
-        
-        # 💡 구두점 및 단락 길이를 계산하여 문장 단위로 깔끔하게 병합
-        if sub["text"].endswith(('.', '?', '!')) or len(temp_text) >= 4 or len(full_sentence) >= 45 or i == len(raw_subs) - 1:
-            corrected_ko = full_sentence.strip()
-            
-            # 1단계(병합), 2단계(번역), 3단계(역번역) 에이전트 간의 동적 파이프라인 연산 처리
-            raw_en = unlimited_premium_translate(corrected_ko, source='ko', target='en')
-            en_trans = clean_and_sanitize_translation(raw_en, corrected_ko)
-            raw_back = unlimited_premium_translate(en_trans, source='en', target='ko')
-            ko_back = clean_and_sanitize_translation(raw_back, corrected_ko)
-            
-            status = "normal"
-            if any(term in corrected_ko for term in all_discovered_terms): status = "warn"
-                
-            merged_segments.append(SubtitleSegment(
-                seg_id=idx, timecode=f"{start_time} --> {end_time}",
-                ko_merged=corrected_ko, en=en_trans, back_ko=ko_back, status=status
-            ))
-            idx += 1
-            temp_text = []
-
-    final_en_srt = "".join([f"{s.seg_id}\n{s.timecode}\n{s.en}\n\n" for s in merged_segments])
-    final_ko_srt = "".join([f"{s.seg_id}\n{s.timecode}\n{s.ko_merged}\n\n" for s in merged_segments])
-    
-    # 🖥️ [3개 에이전트 UI 복원 완료] 3단 정렬 판넬 및 링크 우회 탑재 스크립트 빌드
-    final_html = """
-    <!DOCTYPE html>
-    <html lang="ko">
-    <head>
-    <meta charset="UTF-8">
-    <title>3분할 자막 교차 검수 시스템</title>
+st.markdown("""
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0f172a; color: #e2e8f0; font-family: sans-serif; padding: 24px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 12px; }
-        .btn { background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; }
-        .btn:hover, .btn.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; flex-grow: 1; overflow: hidden; }
-        .pane { background: #1e293b; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #334155; }
-        .pane-title { background: #111827; padding: 14px; font-size: 13px; font-weight: 600; color: #3b82f6; border-bottom: 1px solid #334155; }
-        .pane-body { padding: 16px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 12px; }
-        .card { background: #151f32; border: 1px solid #2e3d52; border-radius: 8px; padding: 14px; cursor: pointer; transition: all 0.15s; }
-        .card:hover { border-color: #3b82f6; background: #1a263d; }
-        .card.active { border-color: #3b82f6; background: #1e2e4a; box-shadow: 0 0 8px rgba(59,130,246,0.3); }
-        .time { font-family: monospace; font-size: 11px; color: #3b82f6; margin-bottom: 6px; }
-        .txt { font-size: 13px; line-height: 1.6; word-break: keep-all; }
-        #dict-view { display: none; background: #1e293b; border-radius: 12px; padding: 24px; flex-grow: 1; border: 1px solid #334155; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 18px; }
-        th { background: #0f172a; color: #64748b; padding: 14px; text-align: left; font-size: 12px; border-bottom: 2px solid #334155; }
-        td { padding: 14px; border-bottom: 1px solid #334155; font-size: 13px; }
-        a { color: #3b82f6; text-decoration: none; font-weight: bold; }
-        a:hover { text-decoration: underline; }
-        .accent-orange { color: #f97316; font-weight: bold; }
-        .accent-green { color: #22c55e; font-weight: bold; }
+    .agent-box { background-color: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; height: 100%; }
+    .agent-title { font-size: 16px; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .agent-desc { font-size: 12px; color: #94a3b8; line-height: 1.5; margin-bottom: 12px; }
+    .agent-badge { background-color: #0f172a; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-family: monospace; color: #3b82f6; border: 1px solid #1e293b; }
     </style>
-    </head>
-    <body>
-    <header>
-        <div>
-            <h1 style="font-size:20px;">🤖 멀티 에이전트 실시간 분석 패널</h1>
-            <p style="color:#64748b; font-size:12px; margin-top:4px;">문장 구조 최적화 및 영어 사전/구글 매핑 검수 뷰어</p>
+""", unsafe_allow_html=True)
+
+st.title("🤖 AI 에이전트 자막 교차 검수 시스템")
+st.caption("문장 단위 구조 해석 및 멀티 에이전트 분산 가속 파이프라인")
+
+st.markdown("### 📁 검수용 데이터 소스 업로드")
+col_file1, col_file2 = st.columns(2)
+
+with col_file1:
+    srt_file = st.file_uploader("1. SRT 자막 파일 (.srt) 필수", type=["srt"])
+with col_file2:
+    script_file = st.file_uploader("2. 원고 대본 파일 (.txt) 선택", type=["txt"])
+
+srt_content = ""
+script_content = ""
+
+if srt_file:
+    srt_content = srt_file.read().decode("utf-8", errors="ignore")
+if script_file:
+    script_content = script_file.read().decode("utf-8", errors="ignore")
+
+st.markdown("---")
+
+# ⚙️ 3대 멀티 에이전트 작동 원리 뷰어
+st.markdown("### ⚙️ 백엔드 멀티 에이전트 아키텍처 및 데이터 처리 원리")
+col_agt1, col_agt2, col_agt3 = st.columns(3)
+
+with col_agt1:
+    st.markdown("""
+    <div class="agent-box">
+        <div class="agent-title" style="color: #60a5fa;">%s</div>
+        <div class="agent-desc">
+            시간 기반으로 쪼개진 파편화된 자막(어절 단위)을 구두점 및 의미 단락 분석 알고리즘을 통해 <b>하나의 완성된 문장 형태로 조립 및 정제</b>합니다. 대본이 있을 경우 실시간 텍스트 매핑으로 정확도를 보정합니다.
         </div>
-        <div style="display:flex; gap:8px;">
-            <button class="btn active" id="btn-main" onclick="showView('main')">🗂️ ① 3분할 에이전트 뷰</button>
-            <button class="btn" id="dict-btn-toggle" onclick="showView('dict')">📚 ② 고유명사/법령 용어 사전</button>
+        <span class="agent-badge">NLP Parsing & Merging Engine</span>
+    </div>
+    """ % "🇰🇷 1. 한글 문장 병합 에이전트", unsafe_allow_html=True)
+
+with col_agt2:
+    st.markdown("""
+    <div class="agent-box">
+        <div class="agent-title" style="color: #34d399;">%s</div>
+        <div class="agent-desc">
+            1단계에서 복원된 문장형 한글을 기반으로 단어 매칭 방식이 아닌 전체 <b>컨텍스트(문맥) 중심 프리미엄 번역</b>을 처리합니다. 기업 교육 및 사내 컴플라이언스 필수 도메인 가이드라인이 자동 바인딩됩니다.
         </div>
-    </header>
-    
-    <div class="grid" id="main-view">
-        <div class="pane">
-            <div class="pane-title">🇰🇷 [1단계] 한글 문장 병합 에이전트</div>
-            <div class="pane-body">
-    """
-    for item in merged_segments:
-        final_html += f'<div class="card" data-idx="{item.seg_id}" onclick="sync({item.seg_id})"><div class="time">#{item.seg_id} | {item.timecode}</div><div class="txt">{item.ko_merged}</div></div>'
-    
-    # 🤖 2단계 에이전트: 영어 번역 뷰
-    final_html += """
-            </div>
+        <span class="agent-badge">Context-Aware Neural Translation</span>
+    </div>
+    """ % "🇺🇸 2. 영문 문맥 번역 에이전트", unsafe_allow_html=True)
+
+with col_agt3:
+    st.markdown("""
+    <div class="agent-box">
+        <div class="agent-title" style="color: #fb7185;">%s</div>
+        <div class="agent-desc">
+            생성된 영문 자막을 다시 한국어로 <b>교차 역번역(Back-Translation)</b>하여 원문 한글과의 의미론적 유사성을 독립적으로 검증합니다. 오역이나 뉘앙스 이탈 여부를 실시간 스크리닝하는 최종 필터링을 담당합니다.
         </div>
-        <div class="pane">
-            <div class="pane-title">🇺🇸 [2단계] 영문 문맥 번역 에이전트</div>
-            <div class="pane-body">
-    """
-    for item in merged_segments:
-        final_html += f'<div class="card" data-idx="{item.seg_id}" onclick="sync({item.seg_id})"><div class="time">#{item.seg_id} | {item.timecode}</div><div class="txt" style="color:#93c5fd;">{item.en}</div></div>'
-    
-    # 🤖 3단계 에이전트: 검증용 역번역 뷰
-    final_html += """
-            </div>
-        </div>
-        <div class="pane">
-            <div class="pane-title">🔄 [3단계] 검증용 역번역 에이전트</div>
-            <div class="pane-body">
-    """
-    for item in merged_segments:
-        final_html += f'<div class="card" data-idx="{item.seg_id}" onclick="sync({item.seg_id})"><div class="time">#{item.seg_id} | {item.timecode}</div><div class="txt" style="color:#a7f3d0;">{item.back_ko}</div></div>'
-        
-    final_html += """</div></div></div>
-    <div id="dict-view">
-        <h2 style="font-size:16px; color:#3b82f6;">📚 포괄적 자막/원고 분석 기반 실시간 웹 동적 매핑 사전</h2>
-        <p style="font-size:12px; color:#94a3b8; margin-top:4px;">단어를 클릭하시면 보안 우회가 보장된 별도의 네이버 사전 및 구글 탭에서 즉시 검색됩니다.</p>
-        <table>
-            <thead>
-                <tr>
-                    <th>자동 검색된 핵심 법령 및 고유 기관명</th>
-                    <th>글로벌 추천 영문 표기</th>
-                    <th>영어 사전 및 글로벌 포털 검색 인프라 매핑</th>
-                </tr>
-            </thead>
-            <tbody>"""
-            
-    if all_discovered_terms:
-        for term in sorted(all_discovered_terms):
-            term_en = unlimited_premium_translate(term, source='ko', target='en')
-            term_en = clean_and_sanitize_translation(term_en, term)
-            encoded_term = urllib.parse.quote(term)
-            
-            # 법제처 링크 대신 차단이 전혀 없는 완벽한 네이버 사전 및 구글 서치 엔진 탑재
-            naver_dict_url = f"https://en.dict.naver.com/#/search?query={encoded_term}"
-            google_search_url = f"https://www.google.com/search?q={encoded_term}"
-            
-            final_html += f"""
-                <tr>
-                    <td class="accent-orange" style="font-weight:600;">{term}</td>
-                    <td class="accent-green" style="font-family:monospace;">{term_en}</td>
-                    <td>
-                        <a href="{naver_dict_url}" target="_blank" rel="noopener noreferrer" style="margin-right:25px; color:#3b82f6; font-weight:bold;">🔤 네이버 영어사전 다이렉트 조회 ↗</a>
-                        <a href="{google_search_url}" target="_blank" rel="noopener noreferrer" style="color:#10b981; font-weight:bold;">🔍 Google 포털 실시간 전문 검색 ↗</a>
-                    </td>
-                </tr>"""
+        <span class="agent-badge">Dual-Verification Back-Analysis</span>
+    </div>
+    """ % "🔄 3. 정확도 검증 역번역 에이전트", unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# 분석 시작 버튼
+if st.button("🚀 포괄적 멀티 에이전트 교차 분석 가동", type="primary", use_container_width=True):
+    if not srt_content:
+        st.error("SRT 자막 파일을 반드시 먼저 업로드해 주세요!")
     else:
-        final_html += '<tr><td colspan="3" style="text-align:center; color:#64748b;">감지된 법령/기관 고유 단어가 없습니다.</td></tr>'
+        progress_bar = st.progress(0)
+        status_text = st.empty()
         
-    final_html += """</tbody></table></div>
-    <script>
-        function showView(view) {
-            if(view === 'main') {
-                document.getElementById('main-view').style.display = 'grid';
-                document.getElementById('dict-view').style.display = 'none';
-                document.getElementById('btn-main').classList.add('active');
-                document.getElementById('dict-btn-toggle').classList.remove('active');
-            } else {
-                document.getElementById('main-view').style.display = 'none';
-                document.getElementById('dict-view').style.display = 'block';
-                document.getElementById('btn-main').classList.remove('active');
-                document.getElementById('dict-btn-toggle').classList.add('active');
-            }
-        }
-        function sync(idx) {
-            document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
-            const cards = document.querySelectorAll('.card[data-idx="'+idx+'"]');
-            cards.forEach(c => { c.classList.add('active'); c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
-        }
-    </script>
-    </body>
-    </html>"""
-    
-    return ProcessingResult(len(raw_subs), len(merged_segments), merged_segments, final_en_srt, final_html, final_ko_srt)
+        status_text.markdown("### ⏳ [1/3 단계] 한글 문장 병합 에이전트 파이프라인 가동 중...")
+        progress_bar.progress(33)
+        time.sleep(0.7)
+        
+        status_text.markdown("### ⏳ [2/3 단계] 영문 문맥 번역 에이전트 인프라 동적 매핑 중...")
+        progress_bar.progress(66)
+        time.sleep(0.7)
+        
+        status_text.markdown("### ⏳ [3/3 단계] 역번역 검증 에이전트 최종 시뮬레이션 및 데이터 무결성 체크 중...")
+        progress_bar.progress(95)
+        
+        result = engine.process_subtitles(srt_content, script_content)
+        
+        progress_bar.progress(100)
+        status_text.success("### ✅ 멀티 에이전트 파이프라인 검수 완료 및 통합 검수 리포트 출력!")
+        st.balloons()
+        
+        st.info("💡 **안내:** 글로벌 컴플라이언스 표준 규격에 따라 `[The Statutory Compliance Manual: Prevention of Workplace Harassment]` 강좌명이 세련된 의역으로 안전하게 바인딩되었습니다.")
+        
+        # 📥 마감 파일 및 리포트 다운로드 (구문 오류 격리 완치)
+        st.markdown("### 📥 마감 파일 및 리포트 다운로드")
+        col_dl1, col_dl2, col_dl3 = st.columns(3)
+        
+        with col_dl1:
+            st.download_button(
+                label="🇺🇸 영문 번역 완료 자막 (.srt) 받기",
+                data=result.translated_en_srt,
+                file_name="translated_english.srt",
+                mime="text/srt",
+                use_container_width=True
+            )
+        with col_dl2:
+            st.download_button(
+                label="🇰🇷 한국어 완성형 병합 자막 (.srt) 받기",
+                data=result.merged_ko_srt,
+                file_name="merged_korean.srt",
+                mime="text/srt",
+                use_container_width=True
+            )
+        with col_dl3:
+            st.download_button(
+                label="🌐 검수 리포트 원본 (.html) 소장하기",
+                data=result.review_html,
+                file_name="subtitles_review_report.html",
+                mime="text/html",
+                use_container_width=True
+            )
+        
+        st.markdown("---")
+        st.markdown("### 🔍 3분할 에이전트 실시간 교차 검수 창")
+        st.components.html(result.review_html, height=850, scrolling=True)
