@@ -1,126 +1,59 @@
 # -*- coding: utf-8 -*-
-"""자막 AI 에이전트 교차 검수 — 업로드 파일 동적 처리 Streamlit 앱"""
-
-from __future__ import annotations
-
-import time
+"""
+Streamlit 메인 UI 구동 파일
+자막 파일(SRT)과 대본(TXT)을 업로드받아 최신 3분할 교차 검수 뷰어를 렌더링합니다.
+"""
 import streamlit as st
-from subtitle_engine import process_subtitles
+import subtitle_engine as engine
 
-def read_upload_text(uploaded_file) -> str:
-    raw = uploaded_file.getvalue()
-    for encoding in ("utf-8-sig", "utf-8", "cp949"):
-        try:
-            return raw.decode(encoding)
-        except UnicodeDecodeError:
-            continue
-    return raw.decode("utf-8", errors="replace")
+st.set_page_config(page_title="자막 3분할 교차 검수 시스템", layout="wide")
 
-def main() -> None:
-    st.set_page_config(page_title="자막 AI 에이전트 검수", page_icon="🎬", layout="wide")
+st.title("🎬 Hackers Campus 법정의무교육 자막 검수 시스템")
+st.caption("문장 단위 자동 병합 및 영미권 표준 어휘/고유명사 실시간 매핑 검수 인프라")
 
-    st.title("📋 자막 AI 에이전트 교차 검수")
-    st.caption("업로드 SRT·대본 → 포괄적 법령 용어 웹 자동 검색 및 실시간 구글 번역 연동 시스템")
+# 사이드바 설정 영역
+st.sidebar.header("📁 데이터 업로드")
+srt_file = st.sidebar.file_uploader("1. SRT 자막 파일 업로드", type=["srt"])
+script_file = st.sidebar.file_uploader("2. 원고 대본 파일 업로드 (선택)", type=["txt"])
 
-    col1, col2 = st.columns(2)
-    with col1:
-        srt_file = st.file_uploader("한글 SRT 자막 파일", type=["srt"])
-    with col2:
-        script_file = st.file_uploader("강사 대본 원고 (.txt)")
+srt_content = ""
+script_content = ""
 
-    if srt_file:
-        st.success(f"SRT: `{srt_file.name}` ({srt_file.size:,} bytes)")
-    if script_file:
-        st.success(f"대본: `{script_file.name}` ({script_file.size:,} bytes)")
+if srt_file:
+    srt_content = srt_file.read().decode("utf-8", errors="ignore")
+if script_file:
+    script_content = script_file.read().decode("utf-8", errors="ignore")
 
-    upload_key = f"{getattr(srt_file, 'name', '')}:{getattr(srt_file, 'size', '')}|{getattr(script_file, 'name', '')}:{getattr(script_file, 'size', '')}"
-    if st.session_state.get("upload_key") != upload_key:
-        st.session_state.pop("final_srt", None)
-        st.session_state.pop("final_html", None)
-        st.session_state["upload_key"] = upload_key
-
-    st.divider()
-
-    a1, a2, a3 = st.columns(3)
-    with a1:
-        st.markdown("### 🌐 문맥 번역가")
-        st.write("타임코드 분석 · 대본 문맥 병합 · 영문 SRT")
-    with a2:
-        st.markdown("### 🔍 웹 법령 검수관")
-        st.write("실시간 텍스트 분석 기반 외부 사전 및 국가법령정보 자동 링크 연동")
-    with a3:
-        st.markdown("### 🔄 역번역기")
-        st.write("영→한 역번역 · 3패널 동기 출력")
-
-    ready = srt_file is not None and script_file is not None
-    start = st.button("분석 시작", type="primary", disabled=not ready, use_container_width=True)
-
-    if start and ready and srt_file and script_file:
-        try:
-            srt_text = read_upload_text(srt_file)
-            script_text = read_upload_text(script_file)
-
-            # 진행률 레이아웃 가시화 패치
-            progress_bar = st.progress(0, text="[0%] 자막 AI 파이프라인 엔진 가동 중…")
-            status_box = st.empty()
+if st.sidebar.button("🚀 분석 및 번역 시작", type="primary"):
+    if not srt_content:
+        st.error("먼저 SRT 자막 파일을 업로드해 주세요!")
+    else:
+        with st.spinner("AI 분산 가속 엔진이 문맥 번역 및 고유명사 교차 추출을 수행 중입니다..."):
+            # 자막 처리 엔진 구동
+            result = engine.process_subtitles(srt_content, script_content)
             
-            progress_bar.progress(0.15, text="[15%] 문맥 번역가 — 한글 SRT 파싱 및 타임코드 정렬 중…")
-            status_box.info("**문맥 번역가** (Context Translator) — 업로드 자막 정밀 파싱 진행")
-            time.sleep(0.3)
-
-            progress_bar.progress(0.40, text="[40%] 문맥 번역가 — 대본 원고 문맥 기반 의미 단위 실시간 문장 자동 병합 중…")
-            status_box.info("**문맥 번역가** (Context Translator) — 문장 완성도 중심 타임라인 병합 및 정형화")
-            time.sleep(0.3)
-
-            progress_bar.progress(0.70, text="[70%] 웹 법령 검수관 — 텍스트 내 포괄적 규정/법령 용어 실시간 검색 및 번역 연동 중…")
-            status_box.warning("**웹 법령 검수관** (Legal Web Searcher) — 자막 데이터 기준 외부 공식 법률망 링크 크로스 매핑")
-            
-            # 백엔드 호출
-            result = process_subtitles(srt_text, script_text, srt_file.name)
-            
-            progress_bar.progress(1.0, text="[100%] 역번역기 — 실시간 서버 API 연동 및 영-한 교차 대조 검증 완료")
-            status_box.success(f"🎉 처리 완료: 원본 {result.original_count}블록 → 병합 {result.merged_count}구간 리포트 바인딩 성공!")
-
-            st.session_state["final_srt"] = result.translated_en_srt
-            st.session_state["final_html"] = result.review_html
-            st.session_state["original_count"] = result.original_count
-            st.session_state["merged_count"] = result.merged_count
-            st.session_state["base_name"] = srt_file.name.rsplit('.', 1)[0]
-
-        except Exception as exc:
-            st.error(f"처리 중 오류 발생: {exc}")
-
-    if st.session_state.get("final_html"):
-        st.divider()
-        st.subheader("처리 결과")
-        
-        c1, c2, c3 = st.columns(3)
-        c1.metric("원본 SRT 블록", f"{st.session_state['original_count']}개")
-        c2.metric("병합 후 구간", f"{st.session_state['merged_count']}개")
-        c3.metric("검수 주의", "정상")
-
-        base_name = st.session_state.get("base_name", "subtitle")
-        dl1, dl2 = st.columns(2)
-        with dl1:
-            st.download_button(
-                label="🇺🇸 [1] 번역된 영문 SRT 다운로드",
-                data=st.session_state["final_srt"].encode("utf-8"),
-                file_name=f"{base_name}_translated_en.srt",
-                mime="text/plain",
-                use_container_width=True,
-            )
-        with dl2:
-            st.download_button(
-                label="🗂️ [2] 3분할 교차 검수 HTML 다운로드",
-                data=st.session_state["final_html"].encode("utf-8"),
-                file_name=f"{base_name}_cross_review.html",
-                mime="text/html",
-                use_container_width=True,
-            )
-
-        st.markdown("---")
-        st.subheader("👀 실시간 3분할 교차 검수 뷰어")
-        st.components.v1.html(st.session_state["final_html"], height=800, scrolling=True)
-
-if __name__ == "__main__":
-    main()
+            if result.merged_count == 0:
+                st.warning("자막을 파싱하지 못했습니다. 파일 구조를 확인해 주세요.")
+            else:
+                st.success(f"분석 완료! 원본 {result.original_count}개 블록을 문장형 {result.merged_count}개 블록으로 최적화했습니다.")
+                
+                # HTML 뷰어 렌더링 (보안 정책 우회형 통합 리포트 내장)
+                st.components.html(result.review_html, height=800, scrolling=True)
+                
+                # 다운로드 버튼 제공
+                st.sidebar.markdown("---")
+                st.sidebar.header("📥 결과물 다운로드")
+                st.sidebar.download_button(
+                    label="🇺🇸 영문 번역 SRT 다운로드",
+                    data=result.translated_en_srt,
+                    file_name="translated_english.srt",
+                    mime="text/srt"
+                )
+                st.sidebar.download_button(
+                    label="🇰🇷 문장 병합본 SRT 다운로드",
+                    data=result.merged_ko_srt,
+                    file_name="merged_korean.srt",
+                    mime="text/srt"
+                )
+else:
+    st.info("← 왼쪽 사이드바에 자막과 원고를 넣고 [분석 및 번역 시작] 버튼을 눌러주세요.")
