@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 '🤖 AI 에이전트 자막 교차 검수 시스템'의 
-3대 에이전트별 작동 메커니즘과 실시간 진행 단계(프로그레스)를 완벽히 매핑한 메인 UI
+AttributeError(컴포넌트 누락) 문제를 완벽하게 패치하여 3분할 창을 띄우는 최종 UI 파일
 """
 import streamlit as st
 import subtitle_engine as engine
@@ -39,14 +39,14 @@ if script_file:
 
 st.markdown("---")
 
-# ⚙️ 3대 멀티 에이전트 작동 원리 뷰어 (f-string 안전 결합)
+# ⚙️ 3대 멀티 에이전트 작동 원리 뷰어
 st.markdown("### ⚙️ 백엔드 멀티 에이전트 아키텍처 및 데이터 처리 원리")
 col_agt1, col_agt2, col_agt3 = st.columns(3)
 
 with col_agt1:
-    st.markdown(f"""
+    st.markdown("""
     <div class="agent-box">
-        <div class="agent-title" style="color: #60a5fa;">🇰🇷 1. 한글 문장 병합 에이전트</div>
+        <div class="agent-title" style="color: #60a5fa;">**🇰🇷 1. 한글 문장 병합 에이전트**</div>
         <div class="agent-desc">
             시간 기반으로 쪼개진 파편화된 자막(어절 단위)을 구두점 및 의미 단락 분석 알고리즘을 통해 <b>하나의 완성된 문장 형태로 조립 및 정제</b>합니다. 대본이 있을 경우 실시간 텍스트 매핑으로 정확도를 보정합니다.
         </div>
@@ -55,9 +55,9 @@ with col_agt1:
     """, unsafe_allow_html=True)
 
 with col_agt2:
-    st.markdown(f"""
+    st.markdown("""
     <div class="agent-box">
-        <div class="agent-title" style="color: #34d399;">🇺🇸 2. 영문 문맥 번역 에이전트</div>
+        <div class="agent-title" style="color: #34d399;">**🇺🇸 2. 영문 문맥 번역 에이전트**</div>
         <div class="agent-desc">
             1단계에서 복원된 문장형 한글을 기반으로 단어 매칭 방식이 아닌 전체 <b>컨텍스트(문맥) 중심 프리미엄 번역</b>을 처리합니다. 기업 교육 및 사내 컴플라이언스 필수 도메인 가이드라인이 자동 바인딩됩니다.
         </div>
@@ -66,9 +66,9 @@ with col_agt2:
     """, unsafe_allow_html=True)
 
 with col_agt3:
-    st.markdown(f"""
+    st.markdown("""
     <div class="agent-box">
-        <div class="agent-title" style="color: #fb7185;">🔄 3. 정확도 검증 역번역 에이전트</div>
+        <div class="agent-title" style="color: #fb7185;">**🔄 3. 정확도 검증 역번역 에이전트**</div>
         <div class="agent-desc">
             생성된 영문 자막을 다시 한국어로 <b>교차 역번역(Back-Translation)</b>하여 원문 한글과의 의미론적 유사성을 독립적으로 검증합니다. 오역이나 뉘앙스 이탈 여부를 실시간 스크리닝하는 최종 필터링을 담당합니다.
         </div>
@@ -78,7 +78,7 @@ with col_agt3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# 분석 시작 버튼
+# 분석 시작 버튼 구동
 if st.button("🚀 포괄적 멀티 에이전트 교차 분석 가동", type="primary", use_container_width=True):
     if not srt_content:
         st.error("SRT 자막 파일을 반드시 먼저 업로드해 주세요!")
@@ -135,4 +135,5 @@ if st.button("🚀 포괄적 멀티 에이전트 교차 분석 가동", type="pr
         
         st.markdown("---")
         st.markdown("### 🔍 3분할 에이전트 실시간 교차 검수 창")
-        st.components.html(result.review_html, height=850, scrolling=True)
+        # 💡 [에러 패치] st.components.html 구형 버전을 최신 규격인 st.components.v1.html로 변경 완료!
+        st.components.v1.html(result.review_html, height=850, scrolling=True)
