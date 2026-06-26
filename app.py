@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
 """
 사용자님이 기존에 사용하시던 친숙한 원본 화면 레이아웃을 100% 복구하고,
-내부 데이터 처리 규격만 안전하게 연동한 메인 구동 파일
+내부 오타 파라미터 에러를 완벽하게 패치한 메인 구동 파일
 """
 import streamlit as st
 import subtitle_engine as engine
 
 st.set_page_config(page_title="자막 3분할 실시간 교차 검수 리포트", layout="wide")
 
+# 💡 [에러 패치] unsafe_index=True 오타를 스트림릿 정식 규격인 unsafe_allow_html=True로 완벽 수정했습니다.
 st.markdown("""
     <style>
     .report-title { font-size: 24px; font-weight: bold; color: #ffffff; margin-bottom: 4px; }
     .report-subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 24px; }
     </style>
-""", unsafe_index=True)
+""", unsafe_allow_html=True)
 
 # 깃허브 배포 및 로컬 구동용 메인 타이틀 바 복원
 st.title("🎬 자막 3분할 실시간 교차 검수 리포트")
@@ -42,7 +43,7 @@ if st.sidebar.button("🚀 포괄적 교차 분석 시작", type="primary"):
                 st.error("자막 구조를 해석하지 못했습니다. SRT 규격을 확인해 주세요.")
             else:
                 st.balloons()
-                # 💡 사용자님이 사용하시던 친숙한 대형 3분할 HTML 컴포넌트 출력 복원
+                # 사용자님이 사용하시던 친숙한 대형 3분할 HTML 컴포넌트 출력 복원
                 st.components.html(result.review_html, height=850, scrolling=True)
                 
                 st.sidebar.markdown("---")
