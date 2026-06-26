@@ -52,12 +52,14 @@ def unlimited_premium_translate(text, source='ko', target='en'):
     return clean_text
 
 def clean_and_sanitize_translation(en_text, ko_text):
-    # 🎯 [오역 완치] "공광식", "교육"이 있더라도 '시작'하는 인트로 느낌(안녕하세요, 시작 등)이 있을 때만 통번역 적용
-    if "공광식" in ko_text and ("교육" in ko_text or "매뉴얼" in ko_text):
-        # 끝인사말인 경우 ("지금까지", "감사합니다", "수고" 등이 포함되면 인트로로 덮어쓰지 않고 일반 번역으로 패스)
+    # 🎯 [오역 완치 클리닉] "공광식" 강사 정보 매핑 조건 정밀화
+    if "공광식" in ko_text and ("교육" in ko_text or "매뉴얼" in ko_text or "이었습니다" in ko_text):
+        
+        # 🚨 [패치 1] 끝인사 및 아웃트로 멘트 처리 (구글의 주어 왜곡 완전 방어)
         if "지금까지" in ko_text or "감사합니다" in ko_text or "수고" in ko_text:
-            pass
-        # 시작 인사말인 경우에만 공식 고정 문구 출력
+            return "That concludes today's session on [Prevention of Workplace Harassment Education] by Hackers Campus. Thank you for your time, I am Certified Labor Attorney Gong Gwang-sik."
+            
+        # 🚀 [패치 2] 시작 인사말 (인트로 고정)
         elif "안녕하세요" in ko_text or "시작" in ko_text or "반갑습니다" in ko_text or len(ko_text) >= 15:
             return "Hello, I am Gong Gwang-sik, a certified labor attorney. Today, we will begin the mandatory compliance course, [The Statutory Compliance Manual: Prevention of Workplace Harassment] by Hackers Campus."
         
