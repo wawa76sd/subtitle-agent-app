@@ -52,9 +52,14 @@ def unlimited_premium_translate(text, source='ko', target='en'):
     return clean_text
 
 def clean_and_sanitize_translation(en_text, ko_text):
-    # 💡 [오역 패치] 단순 "수고하셨습니다"나 짧은 마지막 멘트가 인트로 서식으로 덮어써지지 않도록 글자수(15자 이상) 및 핵심 키워드 체크 강화
-    if "공광식" in ko_text and ("교육" in ko_text or "매뉴얼" in ko_text) and len(ko_text) >= 15:
-        return "Hello, I am Gong Gwang-sik, a certified labor attorney. Today, we will begin the mandatory compliance course, [The Statutory Compliance Manual: Prevention of Workplace Harassment] by Hackers Campus."
+    # 🎯 [오역 완치] "공광식", "교육"이 있더라도 '시작'하는 인트로 느낌(안녕하세요, 시작 등)이 있을 때만 통번역 적용
+    if "공광식" in ko_text and ("교육" in ko_text or "매뉴얼" in ko_text):
+        # 끝인사말인 경우 ("지금까지", "감사합니다", "수고" 등이 포함되면 인트로로 덮어쓰지 않고 일반 번역으로 패스)
+        if "지금까지" in ko_text or "감사합니다" in ko_text or "수고" in ko_text:
+            pass
+        # 시작 인사말인 경우에만 공식 고정 문구 출력
+        elif "안녕하세요" in ko_text or "시작" in ko_text or "반갑습니다" in ko_text or len(ko_text) >= 15:
+            return "Hello, I am Gong Gwang-sik, a certified labor attorney. Today, we will begin the mandatory compliance course, [The Statutory Compliance Manual: Prevention of Workplace Harassment] by Hackers Campus."
         
     fixed_en = en_text
     if "법정필수매뉴얼" in ko_text or "직장 내 괴롭힘 예방 교육" in ko_text or "직장내 괴롭힘 예방교육" in ko_text:
@@ -143,7 +148,7 @@ def process_subtitles(srt_content, script_content, source_filename=None):
     final_en_srt = "".join([f"{s.seg_id}\n{s.timecode}\n{s.en}\n\n" for s in merged_segments])
     final_ko_srt = "".join([f"{s.seg_id}\n{s.timecode}\n{s.ko_merged}\n\n" for s in merged_segments])
     
-    # 🖥️ [검수 패널 텍스트 직관성 개선] 난해한 수식어 제거 및 비즈니스 표준 명칭 반영
+    # 🖥️ 자막 교차 검수 모니터 HTML 템플릿
     final_html = """
     <!DOCTYPE html>
     <html lang="ko">
