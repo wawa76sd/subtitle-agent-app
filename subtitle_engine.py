@@ -52,7 +52,8 @@ def unlimited_premium_translate(text, source='ko', target='en'):
     return clean_text
 
 def clean_and_sanitize_translation(en_text, ko_text):
-    if "공광식" in ko_text and ("교육" in ko_text or "매뉴얼" in ko_text):
+    # 💡 [오역 패치] 단순 "수고하셨습니다"나 짧은 마지막 멘트가 인트로 서식으로 덮어써지지 않도록 글자수(15자 이상) 및 핵심 키워드 체크 강화
+    if "공광식" in ko_text and ("교육" in ko_text or "매뉴얼" in ko_text) and len(ko_text) >= 15:
         return "Hello, I am Gong Gwang-sik, a certified labor attorney. Today, we will begin the mandatory compliance course, [The Statutory Compliance Manual: Prevention of Workplace Harassment] by Hackers Campus."
         
     fixed_en = en_text
@@ -63,6 +64,7 @@ def clean_and_sanitize_translation(en_text, ko_text):
         if len(ko_text.strip()) <= 35:
             return "[The Statutory Compliance Manual: Prevention of Workplace Harassment]"
 
+    # 이러닝 환경에 맞는 표준 비즈니스 용어 치환
     fixed_en = re.sub(r"\bpoem\b", "session", fixed_en, flags=re.IGNORECASE)
     fixed_en = re.sub(r"\bpoems\b", "sessions", fixed_en, flags=re.IGNORECASE)
     fixed_en = re.sub(r"\bfirst poem\b", "first session", fixed_en, flags=re.IGNORECASE)
@@ -141,15 +143,16 @@ def process_subtitles(srt_content, script_content, source_filename=None):
     final_en_srt = "".join([f"{s.seg_id}\n{s.timecode}\n{s.en}\n\n" for s in merged_segments])
     final_ko_srt = "".join([f"{s.seg_id}\n{s.timecode}\n{s.ko_merged}\n\n" for s in merged_segments])
     
+    # 🖥️ [검수 패널 텍스트 직관성 개선] 난해한 수식어 제거 및 비즈니스 표준 명칭 반영
     final_html = """
     <!DOCTYPE html>
     <html lang="ko">
     <head>
     <meta charset="UTF-8">
-    <title>3분할 자막 교차 검수 시스템</title>
+    <title>자막 교차 검수 모니터</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #0f172a; color: #e2e8f0; font-family: sans-serif; padding: 24px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { background: #0f172a; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 24px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #334155; padding-bottom: 12px; }
         .btn { background: #1e293b; border: 1px solid #334155; color: #94a3b8; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; }
         .btn:hover, .btn.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
@@ -175,18 +178,18 @@ def process_subtitles(srt_content, script_content, source_filename=None):
     <body>
     <header>
         <div>
-            <h1 style="font-size:20px;">🤖 멀티 에이전트 실시간 분석 패널</h1>
-            <p style="color:#64748b; font-size:12px; margin-top:4px;">문장 구조 최적화 및 영어 사전/구글 매핑 검수 뷰어</p>
+            <h1 style="font-size:18px;">🔍 자막 실시간 분석 모니터</h1>
+            <p style="color:#64748b; font-size:12px; margin-top:4px;">문장 병합 구조와 영문 번역본 및 검증 데이터를 비교 검수합니다.</p>
         </div>
         <div style="display:flex; gap:8px;">
-            <button class="btn active" id="btn-main" onclick="showView('main')">🗂️ ① 3분할 에이전트 뷰</button>
-            <button class="btn" id="dict-btn-toggle" onclick="showView('dict')">📚 ② 고유명사/법령 용어 사전</button>
+            <button class="btn active" id="btn-main" onclick="showView('main')">🗂️ ① 자막 교차 검수창</button>
+            <button class="btn" id="dict-btn-toggle" onclick="showView('dict')">📚 ② 법령 및 고유명사 사전</button>
         </div>
     </header>
     
     <div class="grid" id="main-view">
         <div class="pane">
-            <div class="pane-title">🇰🇷 [1단계] 한글 문장 병합 에이전트</div>
+            <div class="pane-title">🇰🇷 [1단계] 한글 문장 복원 (싱크 병합)</div>
             <div class="pane-body">
     """
     for item in merged_segments:
@@ -196,7 +199,7 @@ def process_subtitles(srt_content, script_content, source_filename=None):
             </div>
         </div>
         <div class="pane">
-            <div class="pane-title">🇺🇸 [2단계] 영문 문맥 번역 에이전트</div>
+            <div class="pane-title">🇺🇸 [2단계] 최종 영문 자막 번역</div>
             <div class="pane-body">
     """
     for item in merged_segments:
@@ -206,7 +209,7 @@ def process_subtitles(srt_content, script_content, source_filename=None):
             </div>
         </div>
         <div class="pane">
-            <div class="pane-title">🔄 [3단계] 검증용 역번역 에이전트</div>
+            <div class="pane-title">🔄 [3단계] 의미 검증용 역번역 (한국어 복원)</div>
             <div class="pane-body">
     """
     for item in merged_segments:
@@ -214,14 +217,14 @@ def process_subtitles(srt_content, script_content, source_filename=None):
         
     final_html += """</div></div></div>
     <div id="dict-view">
-        <h2 style="font-size:16px; color:#3b82f6;">📚 포괄적 자막/원고 분석 기반 실시간 웹 동적 매핑 사전</h2>
-        <p style="font-size:12px; color:#94a3b8; margin-top:4px;">단어를 클릭하시면 보안 우회가 보장된 별도의 네이버 사전 및 구글 탭에서 즉시 검색됩니다.</p>
+        <h2 style="font-size:16px; color:#3b82f6;">📚 자막 및 원고 추출 고유명사 사전</h2>
+        <p style="font-size:12px; color:#94a3b8; margin-top:4px;">단어를 클릭하면 관련 사전 정보 및 검색 인프라 페이지로 직접 연결됩니다.</p>
         <table>
             <thead>
                 <tr>
-                    <th>자동 검색된 핵심 법령 및 고유 기관명</th>
-                    <th>글로벌 추천 영문 표기</th>
-                    <th>영어 사전 및 글로벌 포털 검색 인프라 매핑</th>
+                    <th>검출된 법령 및 고유 기관명</th>
+                    <th>표준 영문 표기 권장안</th>
+                    <th>외부 검색 인프라 링크</th>
                 </tr>
             </thead>
             <tbody>"""
@@ -240,12 +243,12 @@ def process_subtitles(srt_content, script_content, source_filename=None):
                     <td class="accent-orange" style="font-weight:600;">{term}</td>
                     <td class="accent-green" style="font-family:monospace;">{term_en}</td>
                     <td>
-                        <a href="{naver_dict_url}" target="_blank" rel="noopener noreferrer" style="margin-right:25px; color:#3b82f6; font-weight:bold;">🔤 네이버 영어사전 다이렉트 조회 ↗</a>
-                        <a href="{google_search_url}" target="_blank" rel="noopener noreferrer" style="color:#10b981; font-weight:bold;">🔍 Google 포털 실시간 전문 검색 ↗</a>
+                        <a href="{naver_dict_url}" target="_blank" rel="noopener noreferrer" style="margin-right:25px; color:#3b82f6; font-weight:bold;">🔤 네이버 사전 검색 ↗</a>
+                        <a href="{google_search_url}" target="_blank" rel="noopener noreferrer" style="color:#10b981; font-weight:bold;">🔍 Google 포털 검색 ↗</a>
                     </td>
                 </tr>"""
     else:
-        final_html += '<tr><td colspan="3" style="text-align:center; color:#64748b;">감지된 법령/기관 고유 단어가 없습니다.</td></tr>'
+        final_html += '<tr><td colspan="3" style="text-align:center; color:#64748b;">감지된 고유 용어가 없습니다.</td></tr>'
         
     final_html += """</tbody></table></div>
     <script>
