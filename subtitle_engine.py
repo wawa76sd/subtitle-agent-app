@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 정밀 SRT 파싱 및 문맥 번역을 수행하고, 공식 강좌명 및 인직원 표기법을 강제 바인딩하며,
-자막과 대본 원고에서 고유명사(~위원회, ~청 등) 및 법령명(~법)을 정밀 추출하여
+자막과 대본 원고에서 고유명사(~위원회 등) 및 법령명(~법)을 정밀 추출하여
 네이버 영어사전 및 구글 검색으로 다이렉트 연결하는 최종 자막 엔진
 """
 import re
@@ -64,20 +64,29 @@ def unlimited_premium_translate(text, source='ko', target='en'):
     return clean_text
 
 def clean_and_sanitize_translation(en_text, ko_text):
+    """
+    💡 [강좌명 고도화 의역 레이어]
+    한국어 자막 문맥에 강좌명이 감지되면 기계 번역을 무시하고 서구권 표준 컴플라이언스 명칭으로 강제 맵핑합니다.
+    """
     fixed_en = en_text
     
-    if "직장 내 괴롭힘" in ko_text or "예방 교육" in ko_text or "필수 매뉴얼" in ko_text:
-        fixed_en = re.sub(
-            r"(?:the\s+)?Workplace\s+Harassment\s+Prevention\s+Training(?:\s+Course)?", 
-            "the legally mandatory manual, the Hackers Campus Prevention of Workplace Harassment Education", 
-            fixed_en, flags=re.IGNORECASE
-        )
-        fixed_en = re.sub(
-            r"Workplace\s+Bullying\s+Prohibition\s+Act", 
-            "Prevention of Workplace Harassment Act", 
-            fixed_en, flags=re.IGNORECASE
-        )
-    
+    # 1. 🎯 [마스터 치트키] 강좌명 단독 표기 또는 소개 멘트가 감지될 때 완벽한 의역 명칭 강제 주입
+    # Case A: 인트로 전체 소개 멘트 형태일 때
+    if "공광식" in ko_text and ("교육" in ko_text or "매뉴얼" in ko_text):
+        return "Hello, I am Gong Gwang-sik, a certified labor attorney. Today, we will begin the mandatory compliance course, [The Statutory Compliance Manual: Prevention of Workplace Harassment] by Hackers Campus."
+        
+    # Case B: 강좌명 단어가 단독 혹은 문장 중간에 삽입되어 있을 때 (직역 흔적 완벽 제거)
+    if "법정필수매뉴얼" in ko_text or "직장 내 괴롭힘 예방 교육" in ko_text or "직장내 괴롭힘 예방교육" in ko_text:
+        # 번역 엔진이 만들어낸 지저분한 직역 문구들을 영미권 정식 코스명으로 전면 치환
+        fixed_en = re.sub(r"legally required manual[s]?", "[The Statutory Compliance Manual]", fixed_en, flags=re.IGNORECASE)
+        fixed_en = re.sub(r"workplace bullying prevention training", "[Prevention of Workplace Harassment Education]", fixed_en, flags=re.IGNORECASE)
+        fixed_en = re.sub(r"workplace harassment prevention training", "[Prevention of Workplace Harassment Education]", fixed_en, flags=re.IGNORECASE)
+        
+        # 혹시 통째로 번역기가 꼬아놓은 경우 명확하게 강좌명 바인딩
+        if len(ko_text.strip()) <= 35:  # 단어 위주의 짧은 자막일 때
+            return "[The Statutory Compliance Manual: Prevention of Workplace Harassment]"
+
+    # 2. 개별 단어 단위 세척 및 가이드라인 보정
     fixed_en = re.sub(r"\bpoem\b", "session", fixed_en, flags=re.IGNORECASE)
     fixed_en = re.sub(r"\bpoems\b", "sessions", fixed_en, flags=re.IGNORECASE)
     fixed_en = re.sub(r"\bfirst poem\b", "first session", fixed_en, flags=re.IGNORECASE)
@@ -87,19 +96,17 @@ def clean_and_sanitize_translation(en_text, ko_text):
     
     if "public ceremony" in fixed_en.lower() or "ceremony" in fixed_en.lower():
         fixed_en = re.sub(r"public ceremony", "Instructor Gong Gwang-sik", fixed_en, flags=re.IGNORECASE)
-        fixed_en = re.sub(r"a public ceremony", "Instructor Gong Gwang-sik", fixed_en, flags=re.IGNORECASE)
-        fixed_en = re.sub(r"the public ceremony", "Instructor Gong Gwang-sik", fixed_en, flags=re.IGNORECASE)
     
     fixed_en = re.sub(r"\bkwang[-?\s]*shik\s*kong\b", "Gong Gwang-sik", fixed_en, flags=re.IGNORECASE)
     fixed_en = re.sub(r"\bgong\s*kwang\s*shik\b", "Gong Gwang-sik", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bgonggwangshik\b", "Gong Gwang-sik", fixed_en, flags=re.IGNORECASE)
     
     fixed_en = re.sub(r"\bLabor Officer\b", "Certified Labor Attorney", fixed_en, flags=re.IGNORECASE)
     fixed_en = re.sub(r"\bMr\. Labor Officer\b", "Certified Labor Attorney", fixed_en, flags=re.IGNORECASE)
+    fixed_en = re.sub(r"Workplace Bullying Prohibition Act", "Prevention of Workplace Harassment Act", fixed_en, flags=re.IGNORECASE)
     fixed_en = re.sub(r"\baction guidelines\b", "Compliance Guidelines", fixed_en, flags=re.IGNORECASE)
     fixed_en = re.sub(r"\bpractical action\b", "Code of Conduct", fixed_en, flags=re.IGNORECASE)
-    
     fixed_en = re.sub(r"\bHackers\b(?!\s+Campus)", "Hackers Campus", fixed_en, flags=re.IGNORECASE)
+    
     return fixed_en
 
 def extract_legal_terms_from_text(full_text_content):
@@ -109,10 +116,9 @@ def extract_legal_terms_from_text(full_text_content):
     clean_text = re.sub(r"[^\w\s]", " ", full_text_content)
     words = clean_text.split()
     
-    # 위원회, 노동청, 부처 등 모든 전문 고유기관명 및 법령 단위 정밀 수집 패턴
     target_pattern = r"([가-힣\d]{2,15}(?:법|법률|지침|규칙|고시|위원회|노동청|부처|연구소|센터))"
     josa_pattern = r"[이가은는을를와과의로나만까지도에서부터에만고서]+$"
-    blacklist = ["보면", "실제", "우리", "안녕하세요", "이렇게", "검토", "지시", "대하여", "하는", "준수", "지칭", "방법", "경우", "명확한", "의미형", "개념과", "번째는", "본질적"]
+    blacklist = ["보면", "실제", "우리", "안녕하세요", "이렇게", "검토", "지시", "대하여", "하는", "준수", "지칭", "방법", "경우", "명확한", "의미형", "개념과", "번째는", "본질적", "우가"]
     
     terms = []
     for word in words:
@@ -124,7 +130,7 @@ def extract_legal_terms_from_text(full_text_content):
             
             if token and len(token) > 1 and token not in blacklist and token not in terms:
                 if token.endswith(('법', '법률', '지침', '규칙', '고시', '위원회', '노동청', '부처', '연구소', '센터')) or "인권위" in token:
-                    if not any(fake in token for fake in ["안녕하세요", "보면", "실제", "우리", "이렇게", "개념"]):
+                    if not any(fake in token for fake in ["안녕하세요", "보면", "실제", "우리", "이렇게", "개념", "우가"]):
                         terms.append(token)
     return terms
 
@@ -264,8 +270,6 @@ def process_subtitles(srt_content, script_content, source_filename=None):
             term_en = clean_and_sanitize_translation(term_en, term)
             
             encoded_term = urllib.parse.quote(term)
-            
-            # 💡 [요청사항 완벽 반영] 네이버 영어사전 및 구글 다이렉트 검색 규격 매핑
             naver_dict_url = f"https://en.dict.naver.com/#/search?query={encoded_term}"
             google_search_url = f"https://www.google.com/search?q={encoded_term}"
             
