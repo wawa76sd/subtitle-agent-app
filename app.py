@@ -1,33 +1,33 @@
 # -*- coding: utf-8 -*-
 """
 '🤖 AI 에이전트 자막 교차 검수 시스템'의 
-AttributeError(컴포넌트 누락) 문제를 완벽하게 패치하여 3분할 창을 띄우는 최종 UI 파일
+어려운 기술 용어를 정돈하고, HRD 실무 가독성을 극대화한 메인 UI 개편 파일
 """
 import streamlit as st
 import subtitle_engine as engine
 import time
 
-st.set_page_config(page_title="AI 에이전트 자막 교차 검수 시스템", layout="wide")
+st.set_page_config(page_title="자막 교차 검수 시스템", layout="wide")
 
 st.markdown("""
     <style>
     .agent-box { background-color: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; height: 100%; }
-    .agent-title { font-size: 16px; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-    .agent-desc { font-size: 12px; color: #94a3b8; line-height: 1.5; margin-bottom: 12px; }
+    .agent-title { font-size: 15px; font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .agent-desc { font-size: 12.5px; color: #94a3b8; line-height: 1.6; margin-bottom: 12px; word-break: keep-all; }
     .agent-badge { background-color: #0f172a; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-family: monospace; color: #3b82f6; border: 1px solid #1e293b; }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🤖 AI 에이전트 자막 교차 검수 시스템")
-st.caption("문장 단위 구조 해석 및 멀티 에이전트 분산 가속 파이프라인")
+st.title("🤖 콘텐츠 자막 교차 검수 시스템")
+st.caption("이러닝 자막의 문장 구조 복원 및 다국어 번역 데이터 무결성 검수 가속화 도구")
 
-st.markdown("### 📁 검수용 데이터 소스 업로드")
+st.markdown("### 📁 검수 대상 파일 업로드")
 col_file1, col_file2 = st.columns(2)
 
 with col_file1:
-    srt_file = st.file_uploader("1. SRT 자막 파일 (.srt) 필수", type=["srt"])
+    srt_file = st.file_uploader("1. SRT 자막 파일 (.srt) [필수]", type=["srt"])
 with col_file2:
-    script_file = st.file_uploader("2. 원고 대본 파일 (.txt) 선택", type=["txt"])
+    script_file = st.file_uploader("2. 원고 대본 파일 (.txt) [선택]", type=["txt"])
 
 srt_content = ""
 script_content = ""
@@ -39,78 +39,77 @@ if script_file:
 
 st.markdown("---")
 
-# ⚙️ 3대 멀티 에이전트 작동 원리 뷰어
-st.markdown("### ⚙️ 백엔드 멀티 에이전트 아키텍처 및 데이터 처리 원리")
+# ⚙️ 직관적으로 정돈된 에이전트 프로세스 가이드
+st.markdown("### ⚙️ 자막 프로세싱 핵심 처리 단계")
 col_agt1, col_agt2, col_agt3 = st.columns(3)
 
 with col_agt1:
     st.markdown("""
     <div class="agent-box">
-        <div class="agent-title" style="color: #60a5fa;">**🇰🇷 1. 한글 문장 병합 에이전트**</div>
+        <div class="agent-title" style="color: #60a5fa;">🇰🇷 1. 한글 문장 구조 복원</div>
         <div class="agent-desc">
-            시간 기반으로 쪼개진 파편화된 자막(어절 단위)을 구두점 및 의미 단락 분석 알고리즘을 통해 <b>하나의 완성된 문장 형태로 조립 및 정제</b>합니다. 대본이 있을 경우 실시간 텍스트 매핑으로 정확도를 보정합니다.
+            시간 단위로 짧게 쪼개진 자막 어절들을 구두점과 문맥 단락 기준으로 분석하여 <b>하나의 완결된 문장 형태로 자연스럽게 결합</b>합니다. 대본 매핑을 통해 싱크의 정확도를 보정합니다.
         </div>
-        <span class="agent-badge">NLP Parsing & Merging Engine</span>
+        <span class="agent-badge">문장 단위 결합 알고리즘</span>
     </div>
     """, unsafe_allow_html=True)
 
 with col_agt2:
     st.markdown("""
     <div class="agent-box">
-        <div class="agent-title" style="color: #34d399;">**🇺🇸 2. 영문 문맥 번역 에이전트**</div>
+        <div class="agent-title" style="color: #34d399;">🇺🇸 2. 영문 문맥 번역 및 의역</div>
         <div class="agent-desc">
-            1단계에서 복원된 문장형 한글을 기반으로 단어 매칭 방식이 아닌 전체 <b>컨텍스트(문맥) 중심 프리미엄 번역</b>을 처리합니다. 기업 교육 및 사내 컴플라이언스 필수 도메인 가이드라인이 자동 바인딩됩니다.
+            복원된 문장을 바탕으로 단어 기계 직역을 차단하고 전체 문맥을 파악해 번역합니다. <b>강좌명 및 강사 정보 등 주요 도메인 정보가 비즈니스 표준 표현으로 자동 치환</b>됩니다.
         </div>
-        <span class="agent-badge">Context-Aware Neural Translation</span>
+        <span class="agent-badge">콘텐츠 맞춤형 번역</span>
     </div>
     """, unsafe_allow_html=True)
 
 with col_agt3:
     st.markdown("""
     <div class="agent-box">
-        <div class="agent-title" style="color: #fb7185;">**🔄 3. 정확도 검증 역번역 에이전트**</div>
+        <div class="agent-title" style="color: #fb7185;">🔄 3. 번역 무결성 역번역 검증</div>
         <div class="agent-desc">
-            생성된 영문 자막을 다시 한국어로 <b>교차 역번역(Back-Translation)</b>하여 원문 한글과의 의미론적 유사성을 독립적으로 검증합니다. 오역이나 뉘앙스 이탈 여부를 실시간 스크리닝하는 최종 필터링을 담당합니다.
+            생성된 영문 자막을 다시 한국어로 역번역하여 원문 한글 자막과 대조합니다. <b>의미가 변질되거나 누락된 구간이 없는지 독립적으로 2차 필터링</b>을 수행하여 번역 무결성을 확보합니다.
         </div>
-        <span class="agent-badge">Dual-Verification Back-Analysis</span>
+        <span class="agent-badge">양방향 의미론적 검증</span>
     </div>
     """, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# 분석 시작 버튼 구동
-if st.button("🚀 포괄적 멀티 에이전트 교차 분석 가동", type="primary", use_container_width=True):
+if st.button("🚀 자막 분석 및 교차 검수 가동", type="primary", use_container_width=True):
     if not srt_content:
-        st.error("SRT 자막 파일을 반드시 먼저 업로드해 주세요!")
+        st.error("SRT 자막 파일을 먼저 업로드해 주세요!")
     else:
         progress_bar = st.progress(0)
         status_text = st.empty()
         
-        status_text.markdown("### ⏳ [1/3 단계] 한글 문장 병합 에이전트 파이프라인 가동 중...")
+        status_text.markdown("### ⏳ [1/3] 한글 문장 병합 프로세스 분석 중...")
         progress_bar.progress(33)
-        time.sleep(0.7)
+        time.sleep(0.6)
         
-        status_text.markdown("### ⏳ [2/3 단계] 영문 문맥 번역 에이전트 인프라 동적 매핑 중...")
+        status_text.markdown("### ⏳ [2/3] 도메인 표준 가이드라인 기반 영문 번역 중...")
         progress_bar.progress(66)
-        time.sleep(0.7)
+        time.sleep(0.6)
         
-        status_text.markdown("### ⏳ [3/3 단계] 역번역 검증 에이전트 최종 시뮬레이션 및 데이터 무결성 체크 중...")
+        status_text.markdown("### ⏳ [3/3] 데이터 역번역 검증 및 HTML 리포트 빌드 중...")
         progress_bar.progress(95)
         
         result = engine.process_subtitles(srt_content, script_content)
         
         progress_bar.progress(100)
-        status_text.success("### ✅ 멀티 에이전트 파이프라인 검수 완료 및 통합 검수 리포트 출력!")
+        status_text.success("### ✅ 분석 완료! 통합 검수 리포트가 하단에 출력되었습니다.")
         st.balloons()
         
-        st.info("💡 **안내:** 글로벌 컴플라이언스 표준 규격에 따라 `[The Statutory Compliance Manual: Prevention of Workplace Harassment]` 강좌명이 세련된 의역으로 안전하게 바인딩되었습니다.")
+        st.info("💡 **안내:** 규격 가이드라인에 따라 강좌명이 `[The Statutory Compliance Manual: Prevention of Workplace Harassment]` 규격으로 안전하게 바인딩되었습니다.")
         
-        st.markdown("### 📥 마감 파일 및 리포트 다운로드")
+        st.markdown("### 📥 결과물 다운로드")
         col_dl1, col_dl2, col_dl3 = st.columns(3)
         
         with col_dl1:
             st.download_button(
-                label="🇺🇸 영문 번역 완료 자막 (.srt) 받기",
+                label="🇺🇸 영문 번역 완료 자막 (.srt) 다운로드",
                 data=result.translated_en_srt,
                 file_name="translated_english.srt",
                 mime="text/srt",
@@ -118,7 +117,7 @@ if st.button("🚀 포괄적 멀티 에이전트 교차 분석 가동", type="pr
             )
         with col_dl2:
             st.download_button(
-                label="🇰🇷 한국어 완성형 병합 자막 (.srt) 받기",
+                label="🇰🇷 한국어 문장 병합 자막 (.srt) 다운로드",
                 data=result.merged_ko_srt,
                 file_name="merged_korean.srt",
                 mime="text/srt",
@@ -126,7 +125,7 @@ if st.button("🚀 포괄적 멀티 에이전트 교차 분석 가동", type="pr
             )
         with col_dl3:
             st.download_button(
-                label="🌐 검수 리포트 원본 (.html) 소장하기",
+                label="🌐 HTML 통합 검수 리포트 저장",
                 data=result.review_html,
                 file_name="subtitles_review_report.html",
                 mime="text/html",
@@ -134,6 +133,5 @@ if st.button("🚀 포괄적 멀티 에이전트 교차 분석 가동", type="pr
             )
         
         st.markdown("---")
-        st.markdown("### 🔍 3분할 에이전트 실시간 교차 검수 창")
-        # 💡 [에러 패치] st.components.html 구형 버전을 최신 규격인 st.components.v1.html로 변경 완료!
+        st.markdown("### 🔍 자막 교차 검수 모니터")
         st.components.v1.html(result.review_html, height=850, scrolling=True)
