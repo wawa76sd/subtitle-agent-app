@@ -52,30 +52,33 @@ def unlimited_premium_translate(text, source='ko', target='en'):
     return clean_text
 
 def clean_and_sanitize_translation(en_text, ko_text):
-    # 🎯 [오역 완치 클리닉] "공광식" 강사 정보 매핑 조건 정밀화
-    if "공광식" in ko_text and ("교육" in ko_text or "매뉴얼" in ko_text or "이었습니다" in ko_text):
-        
-        # 🚨 [패치 1] 끝인사 및 아웃트로 멘트 처리 (구글의 주어 왜곡 완전 방어)
-        if "지금까지" in ko_text or "감사합니다" in ko_text or "수고" in ko_text:
-            return "That concludes today's session on [Prevention of Workplace Harassment Education] by Hackers Campus. Thank you for your time, I am Certified Labor Attorney Gong Gwang-sik."
-            
-        # 🚀 [패치 2] 시작 인사말 (인트로 고정)
-        elif "안녕하세요" in ko_text or "시작" in ko_text or "반갑습니다" in ko_text or len(ko_text) >= 15:
-            return "Hello, I am Gong Gwang-sik, a certified labor attorney. Today, we will begin the mandatory compliance course, [The Statutory Compliance Manual: Prevention of Workplace Harassment] by Hackers Campus."
-        
+    ignore_case_flag = re.IGNORECASE
     fixed_en = en_text
     
-    # 잘림 방지를 위해 정규식 패턴과 컴파일 플래그를 변수로 격리하여 안전하게 매핑
-    ignore_case_flag = re.IGNORECASE
+    # 🎯 [오프닝/엔딩 멘트 맥락 최적화 & 글자 수 매칭 패치]
+    # 무조건 긴 문장을 뱉지 않고, 원본 한글의 글자 수 호흡과 유사하게 정제합니다.
+    if "공광식" in ko_text:
+        if "안녕하세요" in ko_text or "반갑습니다" in ko_text:
+            # 원본이 짧은 인사말인 경우 간결하게 매칭 (글자 수 균형)
+            if len(ko_text) <= 15:
+                fixed_en = "Hello, I am Certified Labor Attorney Gong Gwang-sik."
+            else:
+                fixed_en = "Hello, I am Gong Gwang-sik, a certified labor attorney. Today, we will begin the course."
+        elif "지금까지" in ko_text or "감사합니다" in ko_text or "수고" in ko_text:
+            if len(ko_text) <= 15:
+                fixed_en = "Thank you. I am Certified Labor Attorney Gong Gwang-sik."
+            else:
+                fixed_en = "That concludes this session. Thank you for your time, I am Certified Labor Attorney Gong Gwang-sik."
     
+    # 💡 도메인 핵심 가이드라인 바인딩 규칙
     if "법정필수매뉴얼" in ko_text or "직장 내 괴롭힘 예방 교육" in ko_text or "직장내 괴롭힘 예방교육" in ko_text:
         fixed_en = re.sub(r"legally required manual[s]?", "[The Statutory Compliance Manual]", fixed_en, flags=ignore_case_flag)
         fixed_en = re.sub(r"workplace bullying prevention training", "[Prevention of Workplace Harassment Education]", fixed_en, flags=ignore_case_flag)
         fixed_en = re.sub(r"workplace harassment prevention training", "[Prevention of Workplace Harassment Education]", fixed_en, flags=ignore_case_flag)
         if len(ko_text.strip()) <= 35:
-            return "[The Statutory Compliance Manual: Prevention of Workplace Harassment]"
+            fixed_en = "[The Statutory Compliance Manual: Prevention of Workplace Harassment]"
 
-    # 이러닝 환경에 맞는 표준 비즈니스 용어 치환
+    # 이러닝 환경 표준 비즈니스 용어 가공 (Length 조정형)
     fixed_en = re.sub(r"\bpoem\b", "session", fixed_en, flags=ignore_case_flag)
     fixed_en = re.sub(r"\bpoems\b", "sessions", fixed_en, flags=ignore_case_flag)
     fixed_en = re.sub(r"\bfirst poem\b", "first session", fixed_en, flags=ignore_case_flag)
@@ -94,6 +97,7 @@ def clean_and_sanitize_translation(en_text, ko_text):
     fixed_en = re.sub(r"\baction guidelines\b", "Compliance Guidelines", fixed_en, flags=ignore_case_flag)
     fixed_en = re.sub(r"\bpractical action\b", "Code of Conduct", fixed_en, flags=ignore_case_flag)
     fixed_en = re.sub(r"\bHackers\b(?!\\s+Campus)", "Hackers Campus", fixed_en, flags=ignore_case_flag)
+    
     return fixed_en
 
 def extract_legal_terms_from_text(full_text_content):
@@ -136,13 +140,14 @@ def process_subtitles(srt_content, script_content, source_filename=None):
         
         if sub["text"].endswith(('.', '?', '!')) or len(temp_text) >= 4 or len(full_sentence) >= 45 or i == len(raw_subs) - 1:
             corrected_ko = full_sentence.strip()
+            
+            # 💡 [ㄱ번역 오류 완전 완치] 번역기 가동 및 위 정밀 필터 패치 연결
             raw_en = unlimited_premium_translate(corrected_ko, source='ko', target='en')
             en_trans = clean_and_sanitize_translation(raw_en, corrected_ko)
             raw_back = unlimited_premium_translate(en_trans, source='en', target='ko')
             ko_back = clean_and_sanitize_translation(raw_back, corrected_ko)
             
             status = "normal"
-            # 💡 [오타 패치 완료] 불필요하게 끼어있던 'persist' 단어를 깔끔히 제거했습니다.
             if any(term in corrected_ko for term in all_discovered_terms): status = "warn"
                 
             merged_segments.append(SubtitleSegment(
