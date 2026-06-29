@@ -105,6 +105,9 @@ if st.button("🚀 자막 분석 및 교차 검수", type="primary", use_contain
         
         progress_bar.progress(100)
         status_text.empty() # 로딩 텍스트 깔끔히 정리
+        
+        # 🎈 여기에 귀여운 풍선 축하 이펙트만 깔끔하게 추가 완료!
+        st.balloons()
 
 # 💡 [리셋 방지 코어] 세션에 분석 완료 결과가 존재한다면 새로고침 후에도 UI 창 무조건 고정 출력
 if st.session_state['analysis_result'] is not None:
