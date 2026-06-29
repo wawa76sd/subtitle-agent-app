@@ -111,7 +111,7 @@ if st.session_state['analysis_result'] is not None:
     result = st.session_state['analysis_result']
     
     # 초록색 성공 배너와 알림 배너 복원
-    st.success("📊 분석 완료! 통합 검수 리포트가 하단에 출력되었습니다.")
+    st.success("📊 분석 완료! 검수 리포트가 하단에 출력되었습니다.")
     st.info("💡 **안내:** 규격 가이드라인에 따라 강좌명이 `[The Statutory Compliance Manual: Prevention of Workplace Harassment]` 규격으로 안전하게 바인딩되었습니다.")
     
     st.markdown("### 📥 결과물 다운로드")
