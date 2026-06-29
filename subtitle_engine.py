@@ -52,44 +52,56 @@ def unlimited_premium_translate(text, source='ko', target='en'):
     return clean_text
 
 def clean_and_sanitize_translation(en_text, ko_text):
-    # 🎯 [오역 완치 클리닉] "공광식" 강사 정보 매핑 조건 정밀화
-    if "공광식" in ko_text and ("교육" in ko_text or "매뉴얼" in ko_text or "이었습니다" in ko_text):
-        
-        # 🚨 [패치 1] 끝인사 및 아웃트로 멘트 처리 (구글의 주어 왜곡 완전 방어)
-        if "지금까지" in ko_text or "감사합니다" in ko_text or "수고" in ko_text:
-            return "That concludes today's session on [Prevention of Workplace Harassment Education] by Hackers Campus. Thank you for your time, I am Certified Labor Attorney Gong Gwang-sik."
-            
-        # 🚀 [패치 2] 시작 인사말 (인트로 고정)
-        elif "안녕하세요" in ko_text or "시작" in ko_text or "반갑습니다" in ko_text or len(ko_text) >= 15:
-            return "Hello, I am Gong Gwang-sik, a certified labor attorney. Today, we will begin the mandatory compliance course, [The Statutory Compliance Manual: Prevention of Workplace Harassment] by Hackers Campus."
-        
+    ignore_case_flag = re.IGNORECASE
     fixed_en = en_text
+    
+    # 🎯 [오프닝/엔딩 멘트 맥락 최적화 & Hackers Campus 브랜드 가이드라인 결합]
+    if "공광식" in ko_text:
+        if "안녕하세요" in ko_text or "반갑습니다" in ko_text or "시작" in ko_text:
+            if len(ko_text.strip()) <= 10:
+                fixed_en = "Hello, I am Certified Labor Attorney Gong Gwang-sik."
+            else:
+                fixed_en = "Hello, I am Gong Gwang-sik, a certified labor attorney. Today, we will begin the mandatory compliance course, [The Statutory Compliance Manual: Prevention of Workplace Harassment] by Hackers Campus."
+                
+        elif "지금까지" in ko_text or "감사합니다" in ko_text or "수고" in ko_text or "이었습니다" in ko_text:
+            if len(ko_text.strip()) <= 10:
+                fixed_en = "Thank you. I am Certified Labor Attorney Gong Gwang-sik."
+            else:
+                fixed_en = "That concludes today's session on [Prevention of Workplace Harassment Education] by Hackers Campus. Thank you for your time, I am Certified Labor Attorney Gong Gwang-sik."
+    
+    # [과정명 바인딩 룰] 법정필수매뉴얼, 괴롭힘 예방 교육 정밀 치환
     if "법정필수매뉴얼" in ko_text or "직장 내 괴롭힘 예방 교육" in ko_text or "직장내 괴롭힘 예방교육" in ko_text:
-        fixed_en = re.sub(r"legally required manual[s]?", "[The Statutory Compliance Manual]", fixed_en, flags=re.IGNORECASE)
-        fixed_en = re.sub(r"workplace bullying prevention training", "[Prevention of Workplace Harassment Education]", fixed_en, flags=re.IGNORECASE)
-        fixed_en = re.sub(r"workplace harassment prevention training", "[Prevention of Workplace Harassment Education]", fixed_en, flags=re.IGNORECASE)
-        if len(ko_text.strip()) <= 35:
-            return "[The Statutory Compliance Manual: Prevention of Workplace Harassment]"
+        fixed_en = re.sub(r"legally required manual[s]?", "[The Statutory Compliance Manual]", fixed_en, flags=ignore_case_flag)
+        fixed_en = re.sub(r"workplace bullying prevention training", "[Prevention of Workplace Harassment Education]", fixed_en, flags=ignore_case_flag)
+        fixed_en = re.sub(r"workplace harassment prevention training", "[Prevention of Workplace Harassment Education]", fixed_en, flags=ignore_case_flag)
+        if len(ko_text.strip()) <= 35 and not any(k in ko_text for k in ["안녕하세요", "감사합니다", "수고"]):
+            fixed_en = "[The Statutory Compliance Manual: Prevention of Workplace Harassment]"
 
-    # 이러닝 환경에 맞는 표준 비즈니스 용어 치환
-    fixed_en = re.sub(r"\bpoem\b", "session", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bpoems\b", "sessions", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bfirst poem\b", "first session", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bin this poem\b", "in this session", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bthis time\b", "this session", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bnext time\b", "next session", fixed_en, flags=re.IGNORECASE)
+    # 이러닝 표준 비즈니스 용어 가공 규칙
+    fixed_en = re.sub(r"\bpoem\b", "session", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"\bpoems\b", "sessions", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"\bfirst poem\b", "first session", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"\bin this poem\b", "in this session", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"\bthis time\b", "this session", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"\bnext time\b", "next session", fixed_en, flags=ignore_case_flag)
     
     if "public ceremony" in fixed_en.lower() or "ceremony" in fixed_en.lower():
-        fixed_en = re.sub(r"public ceremony", "Instructor Gong Gwang-sik", fixed_en, flags=re.IGNORECASE)
+        fixed_en = re.sub(r"public ceremony", "Instructor Gong Gwang-sik", fixed_en, flags=ignore_case_flag)
     
-    fixed_en = re.sub(r"\bkwang[-?\s]*shik\s*kong\b", "Gong Gwang-sik", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bgong\s*kwang\s*shik\b", "Gong Gwang-sik", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bLabor Officer\b", "Certified Labor Attorney", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bMr\. Labor Officer\b", "Certified Labor Attorney", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"Workplace Bullying Prohibition Act", "Prevention of Workplace Harassment Act", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\baction guidelines\b", "Compliance Guidelines", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bpractical action\b", "Code of Conduct", fixed_en, flags=re.IGNORECASE)
-    fixed_en = re.sub(r"\bHackers\b(?!\s+Campus)", "Hackers Campus", fixed_en, flags=re.IGNORECASE)
+    fixed_en = re.sub(r"\bkwang[-?\s]*shik\s*kong\b", "Gong Gwang-sik", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"\bgong\s*kwang\s*shik\b", "Gong Gwang-sik", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"\bLabor Officer\b", "Certified Labor Attorney", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"\bMr\. Labor Officer\b", "Certified Labor Attorney", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"Workplace Bullying Prohibition Act", "Prevention of Workplace Harassment Act", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"\baction guidelines\b", "Compliance Guidelines", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"\bpractical action\b", "Code of Conduct", fixed_en, flags=ignore_case_flag)
+    
+    # 💡 [중복 오류 완치 패치] 
+    # 먼저 혹시 모를 기존의 잘못된 중복(Hackers Campus Campus)을 한 번 깔끔하게 정상 규격으로 밀어준 뒤,
+    # 그 후 뒤에 Campus가 없는 단독 'Hackers' 단어에만 정교하게 'Campus'를 결합하도록 수정했습니다.
+    fixed_en = re.sub(r"Hackers\s+Campus\s+Campus", "Hackers Campus", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"\bHackers\b(?!\s+Campus)", "Hackers Campus", fixed_en, flags=ignore_case_flag)
+    
     return fixed_en
 
 def extract_legal_terms_from_text(full_text_content):
@@ -132,10 +144,10 @@ def process_subtitles(srt_content, script_content, source_filename=None):
         
         if sub["text"].endswith(('.', '?', '!')) or len(temp_text) >= 4 or len(full_sentence) >= 45 or i == len(raw_subs) - 1:
             corrected_ko = full_sentence.strip()
+            
             raw_en = unlimited_premium_translate(corrected_ko, source='ko', target='en')
             en_trans = clean_and_sanitize_translation(raw_en, corrected_ko)
-            raw_back = unlimited_premium_translate(en_trans, source='en', target='ko')
-            ko_back = clean_and_sanitize_translation(raw_back, corrected_ko)
+            ko_back = unlimited_premium_translate(en_trans, source='en', target='ko')
             
             status = "normal"
             if any(term in corrected_ko for term in all_discovered_terms): status = "warn"

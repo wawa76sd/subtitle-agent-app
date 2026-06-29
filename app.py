@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-'🤖 AI 에이전트 자막 교차 검수 시스템'의 
-어려운 기술 용어를 정돈하고, HRD 실무 가독성을 극대화한 메인 UI 개편 파일
+'🤖 AI 에이전트 자막 교차 검수 시스템'
+기존 오리지널 UI 레이아웃을 100% 유지하면서,
+다운로드 버튼 클릭 시 화면 리셋(Rerun) 버그만 세션 상태로 완벽 해결한 최종 마스터 UI
 """
 import streamlit as st
 import subtitle_engine as engine
@@ -18,7 +19,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🤖 AI 자막 교차 검수 시스템")
+st.title("🤖 AI 자막 번역&교차 검수 시스템")
 st.caption("이러닝 자막의 문장 구조 복원 및 다국어 번역 데이터 무결성 검수 가속화 도구")
 
 st.markdown("### 📁 검수 대상 파일 업로드")
@@ -39,7 +40,6 @@ if script_file:
 
 st.markdown("---")
 
-# ⚙️ 직관적으로 정돈된 에이전트 프로세스 가이드
 st.markdown("### ⚙️ 자막 프로세싱 핵심 처리 단계")
 col_agt1, col_agt2, col_agt3 = st.columns(3)
 
@@ -78,7 +78,11 @@ with col_agt3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-if st.button("🚀 자막 분석 및 교차 검수 가동", type="primary", use_container_width=True):
+# 💡 [버그 예방 방어막] 세션 상태 기저 저장소 선언
+if 'analysis_result' not in st.session_state:
+    st.session_state['analysis_result'] = None
+
+if st.button("🚀 자막 분석 및 교차 검수", type="primary", use_container_width=True):
     if not srt_content:
         st.error("SRT 자막 파일을 먼저 업로드해 주세요!")
     else:
@@ -87,51 +91,57 @@ if st.button("🚀 자막 분석 및 교차 검수 가동", type="primary", use_
         
         status_text.markdown("### ⏳ [1/3] 한글 문장 병합 프로세스 분석 중...")
         progress_bar.progress(33)
-        time.sleep(0.6)
+        time.sleep(0.4)
         
         status_text.markdown("### ⏳ [2/3] 도메인 표준 가이드라인 기반 영문 번역 중...")
         progress_bar.progress(66)
-        time.sleep(0.6)
+        time.sleep(0.4)
         
         status_text.markdown("### ⏳ [3/3] 데이터 역번역 검증 및 HTML 리포트 빌드 중...")
         progress_bar.progress(95)
         
-        result = engine.process_subtitles(srt_content, script_content)
+        # 분석 결과를 세션 상태 저장소에 영구 박제
+        st.session_state['analysis_result'] = engine.process_subtitles(srt_content, script_content)
         
         progress_bar.progress(100)
-        status_text.success("### ✅ 분석 완료! 통합 검수 리포트가 하단에 출력되었습니다.")
-        st.balloons()
-        
-        st.info("💡 **안내:** 규격 가이드라인에 따라 강좌명이 `[The Statutory Compliance Manual: Prevention of Workplace Harassment]` 규격으로 안전하게 바인딩되었습니다.")
-        
-        st.markdown("### 📥 결과물 다운로드")
-        col_dl1, col_dl2, col_dl3 = st.columns(3)
-        
-        with col_dl1:
-            st.download_button(
-                label="🇺🇸 영문 번역 완료 자막 (.srt) 다운로드",
-                data=result.translated_en_srt,
-                file_name="translated_english.srt",
-                mime="text/srt",
-                use_container_width=True
-            )
-        with col_dl2:
-            st.download_button(
-                label="🇰🇷 한국어 문장 병합 자막 (.srt) 다운로드",
-                data=result.merged_ko_srt,
-                file_name="merged_korean.srt",
-                mime="text/srt",
-                use_container_width=True
-            )
-        with col_dl3:
-            st.download_button(
-                label="🌐 HTML 통합 검수 리포트 저장",
-                data=result.review_html,
-                file_name="subtitles_review_report.html",
-                mime="text/html",
-                use_container_width=True
-            )
-        
-        st.markdown("---")
-        st.markdown("### 🔍 자막 교차 검수 모니터")
-        st.components.v1.html(result.review_html, height=850, scrolling=True)
+        status_text.empty() # 로딩 텍스트 깔끔히 정리
+
+# 💡 [리셋 방지 코어] 세션에 분석 완료 결과가 존재한다면 새로고침 후에도 UI 창 무조건 고정 출력
+if st.session_state['analysis_result'] is not None:
+    result = st.session_state['analysis_result']
+    
+    # 초록색 성공 배너와 알림 배너 복원
+    st.success("📊 분석 완료! 검수 리포트가 하단에 출력되었습니다.")
+    st.info("💡 **안내:** 규격 가이드라인에 따라 강좌명이 `[The Statutory Compliance Manual: Prevention of Workplace Harassment]` 규격으로 안전하게 바인딩되었습니다.")
+    
+    st.markdown("### 📥 결과물 다운로드")
+    col_dl1, col_dl2, col_dl3 = st.columns(3)
+    
+    with col_dl1:
+        st.download_button(
+            label="🇺🇸 영문 번역 완료 자막 (.srt) 다운로드",
+            data=result.translated_en_srt,
+            file_name="translated_english.srt",
+            mime="text/plain",
+            use_container_width=True
+        )
+    with col_dl2:
+        st.download_button(
+            label="🇰🇷 한국어 문장 병합 자막 (.srt) 다운로드",
+            data=result.merged_ko_srt,
+            file_name="merged_korean.srt",
+            mime="text/plain",
+            use_container_width=True
+        )
+    with col_dl3:
+        st.download_button(
+            label="🌐 HTML 통합 검수 리포트 저장",
+            data=result.review_html,
+            file_name="subtitles_review_report.html",
+            mime="text/html",
+            use_container_width=True
+        )
+    
+    st.markdown("---")
+    st.markdown("### 🔍 자막 교차 검수 모니터")
+    st.components.v1.html(result.review_html, height=850, scrolling=True)
