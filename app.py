@@ -82,7 +82,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 if 'analysis_result' not in st.session_state:
     st.session_state['analysis_result'] = None
 
-if st.button("🚀 자막 분석 및 교차 검수 가동", type="primary", use_container_width=True):
+if st.button("🚀 자막 분석 및 교차 검수", type="primary", use_container_width=True):
     if not srt_content:
         st.error("SRT 자막 파일을 먼저 업로드해 주세요!")
     else:
