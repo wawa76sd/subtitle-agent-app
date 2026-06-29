@@ -95,7 +95,12 @@ def clean_and_sanitize_translation(en_text, ko_text):
     fixed_en = re.sub(r"Workplace Bullying Prohibition Act", "Prevention of Workplace Harassment Act", fixed_en, flags=ignore_case_flag)
     fixed_en = re.sub(r"\baction guidelines\b", "Compliance Guidelines", fixed_en, flags=ignore_case_flag)
     fixed_en = re.sub(r"\bpractical action\b", "Code of Conduct", fixed_en, flags=ignore_case_flag)
-    fixed_en = re.sub(r"\bHackers\b(?!\\s+Campus)", "Hackers Campus", fixed_en, flags=ignore_case_flag)
+    
+    # 💡 [중복 오류 완치 패치] 
+    # 먼저 혹시 모를 기존의 잘못된 중복(Hackers Campus Campus)을 한 번 깔끔하게 정상 규격으로 밀어준 뒤,
+    # 그 후 뒤에 Campus가 없는 단독 'Hackers' 단어에만 정교하게 'Campus'를 결합하도록 수정했습니다.
+    fixed_en = re.sub(r"Hackers\s+Campus\s+Campus", "Hackers Campus", fixed_en, flags=ignore_case_flag)
+    fixed_en = re.sub(r"\bHackers\b(?!\s+Campus)", "Hackers Campus", fixed_en, flags=ignore_case_flag)
     
     return fixed_en
 
@@ -140,12 +145,8 @@ def process_subtitles(srt_content, script_content, source_filename=None):
         if sub["text"].endswith(('.', '?', '!')) or len(temp_text) >= 4 or len(full_sentence) >= 45 or i == len(raw_subs) - 1:
             corrected_ko = full_sentence.strip()
             
-            # 1단계: 한글 문장 복원 후 ➡️ 영문 번역 가동
             raw_en = unlimited_premium_translate(corrected_ko, source='ko', target='en')
-            # 2단계: 영문 번역본에 영문 전용 가이드라인 규칙 매핑 적용
             en_trans = clean_and_sanitize_translation(raw_en, corrected_ko)
-            
-            # 💡 [버그 완치 핵심 구간] 3단계 역번역은 가이드라인 필터를 거치지 않고 순수 한국어로 복원되도록 분리
             ko_back = unlimited_premium_translate(en_trans, source='en', target='ko')
             
             status = "normal"
