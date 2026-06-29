@@ -65,7 +65,7 @@ def clean_and_sanitize_translation(en_text, ko_text):
         
     fixed_en = en_text
     
-    # 💡 잘림 방지를 위해 정규식 패턴과 컴파일 플래그를 변수로 격리하여 안전하게 매핑
+    # 잘림 방지를 위해 정규식 패턴과 컴파일 플래그를 변수로 격리하여 안전하게 매핑
     ignore_case_flag = re.IGNORECASE
     
     if "법정필수매뉴얼" in ko_text or "직장 내 괴롭힘 예방 교육" in ko_text or "직장내 괴롭힘 예방교육" in ko_text:
@@ -83,7 +83,6 @@ def clean_and_sanitize_translation(en_text, ko_text):
     fixed_en = re.sub(r"\bthis time\b", "this session", fixed_en, flags=ignore_case_flag)
     fixed_en = re.sub(r"\bnext time\b", "next session", fixed_en, flags=ignore_case_flag)
     
-    # 💡 [에러 패치 구간] 줄바꿈 가독성 가공으로 오른쪽 끝 괄호 풀림 현상 원천 봉쇄
     if "public ceremony" in fixed_en.lower() or "ceremony" in fixed_en.lower():
         fixed_en = re.sub(r"public ceremony", "Instructor Gong Gwang-sik", fixed_en, flags=ignore_case_flag)
     
@@ -143,7 +142,8 @@ def process_subtitles(srt_content, script_content, source_filename=None):
             ko_back = clean_and_sanitize_translation(raw_back, corrected_ko)
             
             status = "normal"
-            if any(term in corrected_ko persist for term in all_discovered_terms): status = "warn"
+            # 💡 [오타 패치 완료] 불필요하게 끼어있던 'persist' 단어를 깔끔히 제거했습니다.
+            if any(term in corrected_ko for term in all_discovered_terms): status = "warn"
                 
             merged_segments.append(SubtitleSegment(
                 seg_id=idx, timecode=f"{start_time} --> {end_time}",
