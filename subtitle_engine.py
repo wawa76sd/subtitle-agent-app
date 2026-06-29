@@ -55,30 +55,29 @@ def clean_and_sanitize_translation(en_text, ko_text):
     ignore_case_flag = re.IGNORECASE
     fixed_en = en_text
     
-    # 🎯 [오프닝/엔딩 멘트 맥락 최적화 & 글자 수 매칭 패치]
-    # 무조건 긴 문장을 뱉지 않고, 원본 한글의 글자 수 호흡과 유사하게 정제합니다.
+    # 🎯 [오프닝/엔딩 멘트 맥락 최적화 & Hackers Campus 브랜드 가이드라인 결합]
     if "공광식" in ko_text:
-        if "안녕하세요" in ko_text or "반갑습니다" in ko_text:
-            # 원본이 짧은 인사말인 경우 간결하게 매칭 (글자 수 균형)
-            if len(ko_text) <= 15:
+        if "안녕하세요" in ko_text or "반갑습니다" in ko_text or "시작" in ko_text:
+            if len(ko_text.strip()) <= 10:
                 fixed_en = "Hello, I am Certified Labor Attorney Gong Gwang-sik."
             else:
-                fixed_en = "Hello, I am Gong Gwang-sik, a certified labor attorney. Today, we will begin the course."
-        elif "지금까지" in ko_text or "감사합니다" in ko_text or "수고" in ko_text:
-            if len(ko_text) <= 15:
+                fixed_en = "Hello, I am Gong Gwang-sik, a certified labor attorney. Today, we will begin the mandatory compliance course, [The Statutory Compliance Manual: Prevention of Workplace Harassment] by Hackers Campus."
+                
+        elif "지금까지" in ko_text or "감사합니다" in ko_text or "수고" in ko_text or "이었습니다" in ko_text:
+            if len(ko_text.strip()) <= 10:
                 fixed_en = "Thank you. I am Certified Labor Attorney Gong Gwang-sik."
             else:
-                fixed_en = "That concludes this session. Thank you for your time, I am Certified Labor Attorney Gong Gwang-sik."
+                fixed_en = "That concludes today's session on [Prevention of Workplace Harassment Education] by Hackers Campus. Thank you for your time, I am Certified Labor Attorney Gong Gwang-sik."
     
-    # 💡 도메인 핵심 가이드라인 바인딩 규칙
+    # [과정명 바인딩 룰] 법정필수매뉴얼, 괴롭힘 예방 교육 정밀 치환
     if "법정필수매뉴얼" in ko_text or "직장 내 괴롭힘 예방 교육" in ko_text or "직장내 괴롭힘 예방교육" in ko_text:
         fixed_en = re.sub(r"legally required manual[s]?", "[The Statutory Compliance Manual]", fixed_en, flags=ignore_case_flag)
         fixed_en = re.sub(r"workplace bullying prevention training", "[Prevention of Workplace Harassment Education]", fixed_en, flags=ignore_case_flag)
         fixed_en = re.sub(r"workplace harassment prevention training", "[Prevention of Workplace Harassment Education]", fixed_en, flags=ignore_case_flag)
-        if len(ko_text.strip()) <= 35:
+        if len(ko_text.strip()) <= 35 and not any(k in ko_text for k in ["안녕하세요", "감사합니다", "수고"]):
             fixed_en = "[The Statutory Compliance Manual: Prevention of Workplace Harassment]"
 
-    # 이러닝 환경 표준 비즈니스 용어 가공 (Length 조정형)
+    # 이러닝 표준 비즈니스 용어 가공 규칙
     fixed_en = re.sub(r"\bpoem\b", "session", fixed_en, flags=ignore_case_flag)
     fixed_en = re.sub(r"\bpoems\b", "sessions", fixed_en, flags=ignore_case_flag)
     fixed_en = re.sub(r"\bfirst poem\b", "first session", fixed_en, flags=ignore_case_flag)
@@ -141,11 +140,13 @@ def process_subtitles(srt_content, script_content, source_filename=None):
         if sub["text"].endswith(('.', '?', '!')) or len(temp_text) >= 4 or len(full_sentence) >= 45 or i == len(raw_subs) - 1:
             corrected_ko = full_sentence.strip()
             
-            # 💡 [ㄱ번역 오류 완전 완치] 번역기 가동 및 위 정밀 필터 패치 연결
+            # 1단계: 한글 문장 복원 후 ➡️ 영문 번역 가동
             raw_en = unlimited_premium_translate(corrected_ko, source='ko', target='en')
+            # 2단계: 영문 번역본에 영문 전용 가이드라인 규칙 매핑 적용
             en_trans = clean_and_sanitize_translation(raw_en, corrected_ko)
-            raw_back = unlimited_premium_translate(en_trans, source='en', target='ko')
-            ko_back = clean_and_sanitize_translation(raw_back, corrected_ko)
+            
+            # 💡 [버그 완치 핵심 구간] 3단계 역번역은 가이드라인 필터를 거치지 않고 순수 한국어로 복원되도록 분리
+            ko_back = unlimited_premium_translate(en_trans, source='en', target='ko')
             
             status = "normal"
             if any(term in corrected_ko for term in all_discovered_terms): status = "warn"
