@@ -19,7 +19,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🤖 콘텐츠 자막 교차 검수 시스템")
+st.title("🤖 AI 자막 번역&교차 검수 시스템")
 st.caption("이러닝 자막의 문장 구조 복원 및 다국어 번역 데이터 무결성 검수 가속화 도구")
 
 st.markdown("### 📁 검수 대상 파일 업로드")
